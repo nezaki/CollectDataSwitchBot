@@ -1,0 +1,118 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Sample SAM Template for sam-app
+
+Parameters:
+  SwitchbotApiToken:
+    Type: String
+  SwitchbotApiSecret:
+    Type: String
+  SwitchbotDeviceID:
+    Type: String
+
+# More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
+Globals:
+  Function:
+    # Properties of AWS::Serverless::Function
+    Timeout: 60
+    MemorySize: 128
+    Tracing: Active
+    LoggingConfig:
+      LogFormat: JSON
+    Environment:
+      Variables:
+        POWERTOOLS_SERVICE_NAME: sam-app
+        POWERTOOLS_LOG_LEVEL: INFO
+
+Resources:
+  ScheduledGetDeviceFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      PackageType: Zip
+      CodeUri: app/
+      Handler: src.lambda_handler_schedule_get_device.lambda_handler
+      Runtime: python3.13
+      Architectures:
+      - x86_64
+      SnapStart:
+        ApplyOn: None
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DeviceStatusTable
+        - AWSSecretsManagerGetSecretValuePolicy:
+            SecretArn: !Ref SwitchbotApiTokenSecret
+        - AWSSecretsManagerGetSecretValuePolicy:
+            SecretArn: !Ref SwitchbotApiSecretSecret
+        - AWSSecretsManagerGetSecretValuePolicy:
+            SecretArn: !Ref SwitchbotDeviceIDSecret
+
+      Events:
+        Schedule:
+          Type: ScheduleV2
+          Properties:
+            Name: get-device-lambda-scheduler
+            ScheduleExpression: cron(0/5 * * * ? *)
+            ScheduleExpressionTimezone: Asia/Tokyo
+
+  ApplicationResourceGroup:
+    Type: AWS::ResourceGroups::Group
+    Properties:
+      Name:
+        Fn::Sub: ApplicationInsights-SAM-${AWS::StackName}
+      ResourceQuery:
+        Type: CLOUDFORMATION_STACK_1_0
+
+  ApplicationInsightsMonitoring:
+    Type: AWS::ApplicationInsights::Application
+    Properties:
+      ResourceGroupName:
+        Ref: ApplicationResourceGroup
+      AutoConfigurationEnabled: true
+
+  DeviceStatusTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: DeviceStatus
+      AttributeDefinitions:
+        - AttributeName: DeviceID
+          AttributeType: S
+        - AttributeName: Time
+          AttributeType: S
+      KeySchema:
+        - AttributeName: DeviceID
+          KeyType: 'HASH'
+        - AttributeName: Time
+          KeyType: 'RANGE'
+      BillingMode: PROVISIONED
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+      TableClass: STANDARD
+
+  SwitchbotApiTokenSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: SwitchbotApiToken
+      SecretString: !Ref SwitchbotApiToken
+
+  SwitchbotApiSecretSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: SwitchbotApiSecret
+      SecretString: !Ref SwitchbotApiSecret
+
+  SwitchbotDeviceIDSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: SwitchbotDeviceID
+      SecretString: !Ref SwitchbotDeviceID
+
+Outputs:
+  ScheduledGetDeviceFunction:
+    Description: Lambda Function ARN
+    Value: !GetAtt ScheduledGetDeviceFunction.Arn
+
+  ScheduledGetDeviceFunctionIamRole:
+    Description: Implicit IAM Role created for function
+    Value: !GetAtt ScheduledGetDeviceFunctionRole.Arn
