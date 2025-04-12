@@ -48,6 +48,17 @@ aws --endpoint-url=http://localhost:4566 dynamodb create-table \
     --billing-mode PROVISIONED \
     --table-class STANDARD \
     --profile localstack
+
+aws --endpoint-url=http://localhost:4566 dynamodb create-table \
+    --table-name weather  \
+    --attribute-definitions \
+        AttributeName=CityID,AttributeType=S \
+        AttributeName=Time,AttributeType=S \
+    --provisioned-throughput ReadCapacityUnits=1,WriteCapacityUnits=1 \
+    --key-schema AttributeName=CityID,KeyType=HASH AttributeName=Time,KeyType=RANGE \
+    --billing-mode PROVISIONED \
+    --table-class STANDARD \
+    --profile localstack
 ```
 
 ローカル(localstack)のSecretManagerにシークレット作成
@@ -67,7 +78,14 @@ aws --endpoint-url=http://localhost:4566 secretsmanager create-secret \
     --secret-string "" \
     --profile localstack
 ```
+```
+aws --endpoint-url=http://localhost:4566 secretsmanager create-secret \
+    --name CurrentWeatherAppid \
+    --secret-string "" \
+    --profile localstack
+```
 
+メモ
 ```
 docker compose up -d
 ```
@@ -82,5 +100,5 @@ sam build
 
 sam deploy \
   --config-file samconfig.toml \
-  --parameter-overrides SwitchbotApiToken="" SwitchbotApiSecret="" SwitchbotDeviceID=""
+  --parameter-overrides SwitchbotApiToken="" SwitchbotApiSecret="" SwitchbotDeviceID="" CurrentWeatherAppid=""
 ```

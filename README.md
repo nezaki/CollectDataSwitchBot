@@ -2,6 +2,8 @@
 
 [SwitchBotAPI](https://github.com/OpenWonderLabs/SwitchBotAPI)
 
+[OpenWeather](https://openweathermap.org/)
+
 [Poetry](https://python-poetry.org/)
 
 [AWS Serverless Application Model](https://docs.aws.amazon.com/ja_jp/serverless-application-model/latest/developerguide/what-is-sam.html)  

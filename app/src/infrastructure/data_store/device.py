@@ -1,7 +1,7 @@
 from src.infrastructure.data_store._client import dynamodb_client
 from src.infrastructure.switchbot.device import DeviceStatus
 
-def put(device: DeviceStatus):
+def put_device(device: DeviceStatus):
     dynamodb_client.put_item(
         TableName="DeviceStatus",
         Item={

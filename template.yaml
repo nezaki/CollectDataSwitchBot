@@ -10,6 +10,8 @@ Parameters:
     Type: String
   SwitchbotDeviceID:
     Type: String
+  CurrentWeatherAppid:
+    Type: String
 
 # More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
 Globals:
@@ -19,6 +21,8 @@ Globals:
     MemorySize: 128
     Tracing: Active
     LoggingConfig:
+      ApplicationLogLevel: INFO
+      SystemLogLevel: INFO
       LogFormat: JSON
     Environment:
       Variables:
@@ -31,7 +35,7 @@ Resources:
     Properties:
       PackageType: Zip
       CodeUri: app/
-      Handler: src.lambda_handler_schedule_get_device.lambda_handler
+      Handler: src.lambda_handler.lambda_handler
       Runtime: python3.13
       Architectures:
       - x86_64
@@ -40,19 +44,23 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref DeviceStatusTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref WeatherTable
         - AWSSecretsManagerGetSecretValuePolicy:
             SecretArn: !Ref SwitchbotApiTokenSecret
         - AWSSecretsManagerGetSecretValuePolicy:
             SecretArn: !Ref SwitchbotApiSecretSecret
         - AWSSecretsManagerGetSecretValuePolicy:
             SecretArn: !Ref SwitchbotDeviceIDSecret
+        - AWSSecretsManagerGetSecretValuePolicy:
+            SecretArn: !Ref CurrentWeatherAppidSecret
 
       Events:
         Schedule:
           Type: ScheduleV2
           Properties:
             Name: get-device-lambda-scheduler
-            ScheduleExpression: cron(0/5 * * * ? *)
+            ScheduleExpression: cron(0/15 * * * ? *)
             ScheduleExpressionTimezone: Asia/Tokyo
 
   ApplicationResourceGroup:
@@ -90,6 +98,26 @@ Resources:
         WriteCapacityUnits: 1
       TableClass: STANDARD
 
+  WeatherTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: Weather
+      AttributeDefinitions:
+        - AttributeName: CityID
+          AttributeType: S
+        - AttributeName: Time
+          AttributeType: S
+      KeySchema:
+        - AttributeName: CityID
+          KeyType: 'HASH'
+        - AttributeName: Time
+          KeyType: 'RANGE'
+      BillingMode: PROVISIONED
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+      TableClass: STANDARD
+
   SwitchbotApiTokenSecret:
     Type: AWS::SecretsManager::Secret
     Properties:
@@ -107,6 +135,12 @@ Resources:
     Properties:
       Name: SwitchbotDeviceID
       SecretString: !Ref SwitchbotDeviceID
+
+  CurrentWeatherAppidSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: CurrentWeatherAppid
+      SecretString: !Ref CurrentWeatherAppid
 
 Outputs:
   ScheduledGetDeviceFunction:
